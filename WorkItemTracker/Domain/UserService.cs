@@ -15,6 +15,7 @@ public class UserService
 
     public User CreateUser(string name)
     {
+        //use validateion here so that the id is not wasted if the name is invalid. 
         string validatedName = User.ValidateName(name);
         if (_users.Any(u => u.Name.Equals(validatedName, StringComparison.OrdinalIgnoreCase)))
         {
