@@ -13,7 +13,7 @@ public class WorkItem
     public WorkItem(int id, string title, Priority priority)
     {
         Id = id;
-        Title = validateTitle(title);
+        Title = WorkItem.ValidateTitle(title);
         Status = Status.ToDo;
         Priority = priority;
         CreatedAt = DateTime.UtcNow;

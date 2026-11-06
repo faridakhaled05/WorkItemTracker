@@ -26,6 +26,15 @@ public class UserService
         _users.Add(user);
         return user;
     }
+    public User GetUserById(int id)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == id);
+        if (user == null)
+        {
+            throw new DomainException($"User with ID '{id}' not found.");
+        }
+        return user;
+    }
 
     public IReadOnlyList<User> GetAllUsers()
     {
