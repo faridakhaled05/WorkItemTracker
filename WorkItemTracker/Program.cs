@@ -1,4 +1,5 @@
 using WorkItemTracker.ConsoleUI;
+using WorkItemTracker.Domain;
 
 namespace WorkItemTracker;
 
@@ -8,6 +9,10 @@ public class Program
 {
     public static void Main()
     {
+        var userService = new UserService(new SequentialIdGenerator());
+        var workItemService = new WorkItemService(new SequentialIdGenerator(), userService);
+        SampleData.Load(userService, workItemService);
+
         while (true)
         {
             ShowMenu();
