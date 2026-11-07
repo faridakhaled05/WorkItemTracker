@@ -17,51 +17,59 @@ public class Program
         {
             ShowMenu();
 
-            var choice = ConsoleInput.ReadText("Choose an option");
-            switch (choice)
+            // One try/catch for every option: a rejected operation prints its message and returns to the menu.
+            try
             {
-                case "0":
-                    return;
+                var choice = ConsoleInput.ReadText("Choose an option");
+                switch (choice)
+                {
+                    case "0":
+                        return;
 
-                case "1":
-                    // ReadText: reads a line of text.
-                    var name = ConsoleInput.ReadText("Name");
-                    Console.WriteLine($"Not implemented yet. You typed '{name}'.");
-                    break;
+                    case "1":
+                        AddUser(userService);
+                        break;
 
-                case "3":
-                    var title = ConsoleInput.ReadText("Title");
+                    case "2":
+                        ListUsers(userService);
+                        break;
 
-                    // ReadChoice: once you've created a Priority enum, this shows
-                    // "1) High  2) Medium  3) Low" and returns the value picked:
-                    // var priority = ConsoleInput.ReadChoice<Priority>("Priority");
+                    case "3":
+                        CreateWorkItem(workItemService);
+                        break;
 
-                    // ReadOptionalInt: returns null when the user just presses Enter.
-                    int? assigneeId = ConsoleInput.ReadOptionalInt("Assignee user Id (Enter for none)");
-                    Console.WriteLine(assigneeId is null
-                        ? $"Not implemented yet. Title '{title}', no assignee."
-                        : $"Not implemented yet. Title '{title}', assignee {assigneeId}.");
-                    break;
+                    case "4":
+                        ListAllWorkItems(workItemService);
+                        break;
 
-                case "7":
-                    // ReadInt: asks again until the user types a whole number.
-                    var workItemId = ConsoleInput.ReadInt("Work item Id");
-                    var userId = ConsoleInput.ReadInt("User Id");
-                    Console.WriteLine($"Not implemented yet. Work item {workItemId}, user {userId}.");
-                    break;
+                    case "5":
+                        ListWorkItemsByStatus(workItemService);
+                        break;
 
-                case "2":
-                case "4":
-                case "5":
-                case "6":
-                case "8":
-                case "9":
-                    Console.WriteLine("Not implemented yet.");
-                    break;
+                    case "6":
+                        ListWorkItemsByAssignee(workItemService);
+                        break;
 
-                default:
-                    Console.WriteLine($"'{choice}' is not a menu option.");
-                    break;
+                    case "7":
+                        AssignWorkItem(workItemService, userService);
+                        break;
+
+                    case "8":
+                        ChangeStatus(workItemService);
+                        break;
+
+                    case "9":
+                        ShowSummary(workItemService);
+                        break;
+
+                    default:
+                        Console.WriteLine($"'{choice}' is not a menu option.");
+                        break;
+                }
+            }
+            catch (DomainException ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
             }
         }
     }
@@ -80,5 +88,113 @@ public class Program
         Console.WriteLine("8. Change status");
         Console.WriteLine("9. Show summary");
         Console.WriteLine("0. Exit");
+    }
+
+    private static void AddUser(UserService userService)
+    {
+        var name = ConsoleInput.ReadText("Name");
+        var user = userService.CreateUser(name);
+        Console.WriteLine($"User {user.Id} '{user.Name}' added.");
+    }
+
+    private static void ListUsers(UserService userService)
+    {
+        var users = userService.GetAllUsers();
+        if (users.Count == 0)
+        {
+            Console.WriteLine("No users found.");
+        }
+        else
+        {
+            foreach (var u in users)
+            {
+                Console.WriteLine($"{u.Id}  {u.Name}");
+            }
+        }
+    }
+
+    private static void CreateWorkItem(WorkItemService workItemService)
+    {
+        var title = ConsoleInput.ReadText("Title");
+        var priority = ConsoleInput.ReadChoice<Priority>("Priority");
+        // ReadOptionalInt: returns null when the user just presses Enter.
+        int? assigneeId = ConsoleInput.ReadOptionalInt("Assignee user Id (Enter for none)");
+
+        var workItem = workItemService.CreateWorkItem(title, priority, assigneeId);
+        Console.WriteLine($"Work item {workItem.Id} created.");
+    }
+
+    private static void ListAllWorkItems(WorkItemService workItemService)
+    {
+        PrintList(workItemService.GetAllWorkItems());
+    }
+
+    private static void ListWorkItemsByStatus(WorkItemService workItemService)
+    {
+        var status = ConsoleInput.ReadChoice<Status>("Status");
+        PrintList(workItemService.GetWorkItemsByStatus(status));
+    }
+
+    private static void ListWorkItemsByAssignee(WorkItemService workItemService)
+    {
+        var userId = ConsoleInput.ReadInt("Assignee User Id");
+        PrintList(workItemService.GetWorkItemsByAssignee(userId));
+    }
+
+    private static void AssignWorkItem(WorkItemService workItemService, UserService userService)
+    {
+        var workItemId = ConsoleInput.ReadInt("Work item Id");
+        var userId = ConsoleInput.ReadInt("User Id");
+        var workItem = workItemService.AssignUserToWorkItem(workItemId, userId);
+        Console.WriteLine($"Work item {workItemId} assigned to {workItem.Assignee.Name}.");
+    }
+
+    private static void ChangeStatus(WorkItemService workItemService)
+    {
+        var workItemId = ConsoleInput.ReadInt("Work item Id");
+        var newStatus = ConsoleInput.ReadChoice<Status>("New status");
+        workItemService.UpdateWorkItemStatus(workItemId, newStatus);
+        Console.WriteLine($"Work item {workItemId} is now {newStatus}.");
+    }
+
+    private static void ShowSummary(WorkItemService workItemService)
+    {
+        var summary = workItemService.GetStatusSummary();
+        Console.WriteLine(string.Join("   ", summary.Select(kvp => $"{kvp.Key}: {kvp.Value}")));
+    }
+
+    private static void PrintList(IReadOnlyList<WorkItem> workItems)
+    {
+        if (workItems.Count == 0)
+        {
+            Console.WriteLine("No matching work items.");
+            return;
+        }
+
+        // Each column is as wide as its longest value (header included). Id is right-aligned.
+        var rows = workItems.Select(w => new[]
+        {
+            w.Id.ToString(),
+            w.Title,
+            w.Priority.ToString(),
+            w.Status.ToString(),
+            w.Assignee?.Name ?? "-",
+            w.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+        }).ToList();
+        string[] headers = ["Id", "Title", "Priority", "Status", "Assignee", "Created" ];
+        var widths = headers.Select((h, i) => Math.Max(h.Length, rows.Max(r => r[i].Length))).ToArray();
+
+        Console.WriteLine(FormatRow(headers, widths));
+        foreach (var row in rows)
+        {
+            Console.WriteLine(FormatRow(row, widths));
+        }
+    }
+
+    private static string FormatRow(string[] cells, int[] widths)
+    {
+        var id = cells[0].PadLeft(widths[0]);
+        var others = cells.Skip(1).Select((c, i) => c.PadRight(widths[i + 1]));
+        return (id + "  " + string.Join("  ", others)).TrimEnd();
     }
 }
