@@ -7,6 +7,15 @@ namespace WorkItemTracker;
 // Some options already read their input with the ConsoleInput helpers, to show how they're used.
 public class Program
 {
+    
+    
+    private static readonly List<(string Label, IComparer<WorkItem> Comparer, bool IsDefault)> Orderings = new()
+    {
+        ("Priority", new PriorityOrdering(), true),
+        ("Title", new TitleOrdering(), false),
+        ("Newest first", new NewestFirstOrdering(), false)
+    };
+
     public static void Main()
     {
         var userService = new UserService(new SequentialIdGenerator());
@@ -51,7 +60,7 @@ public class Program
                         break;
 
                     case "7":
-                        AssignWorkItem(workItemService, userService);
+                        AssignWorkItem(workItemService);
                         break;
 
                     case "8":
@@ -124,24 +133,52 @@ public class Program
         Console.WriteLine($"Work item {workItem.Id} created.");
     }
 
+private static IComparer<WorkItem> ChooseOrdering()
+    {
+        Console.WriteLine("Choose an ordering:");
+        for (int i = 0; i < Orderings.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {Orderings[i].Label}");
+        }
+        var orderingChoice = ConsoleInput.ReadOptionalInt("Ordering option (Enter for default)");
+        while (orderingChoice != null && (orderingChoice < 1 || orderingChoice > Orderings.Count))
+        {
+            Console.WriteLine($"Invalid choice. Please enter a number between 1 and {Orderings.Count}, or press Enter for default.");
+            orderingChoice = ConsoleInput.ReadOptionalInt("Ordering option (Enter for default)");
+        }
+        var selectedOrdering = orderingChoice == null 
+        ? Orderings.First(o => o.IsDefault) 
+        : Orderings[orderingChoice.Value - 1];
+
+        return selectedOrdering.Comparer;
+    
+}        
+
+    
     private static void ListAllWorkItems(WorkItemService workItemService)
     {
-        PrintList(workItemService.GetAllWorkItems());
+        var selectedComparer = ChooseOrdering();
+        PrintList(workItemService.GetAllWorkItems(selectedComparer));
     }
+    
 
     private static void ListWorkItemsByStatus(WorkItemService workItemService)
     {
         var status = ConsoleInput.ReadChoice<Status>("Status");
-        PrintList(workItemService.GetWorkItemsByStatus(status));
+        //choose ordering option
+         var selectedComparer = ChooseOrdering();
+        PrintList(workItemService.GetWorkItemsByStatus(status, selectedComparer));
+        
     }
 
     private static void ListWorkItemsByAssignee(WorkItemService workItemService)
     {
         var userId = ConsoleInput.ReadInt("Assignee User Id");
-        PrintList(workItemService.GetWorkItemsByAssignee(userId));
+        var selectedComparer = ChooseOrdering();
+        PrintList(workItemService.GetWorkItemsByAssignee(userId, selectedComparer));
     }
 
-    private static void AssignWorkItem(WorkItemService workItemService, UserService userService)
+    private static void AssignWorkItem(WorkItemService workItemService)
     {
         var workItemId = ConsoleInput.ReadInt("Work item Id");
         var userId = ConsoleInput.ReadInt("User Id");
