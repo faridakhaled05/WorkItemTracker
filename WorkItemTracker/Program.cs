@@ -146,7 +146,8 @@ public class Program
         var workItemId = ConsoleInput.ReadInt("Work item Id");
         var userId = ConsoleInput.ReadInt("User Id");
         var workItem = workItemService.AssignUserToWorkItem(workItemId, userId);
-        Console.WriteLine($"Work item {workItemId} assigned to {workItem.Assignee.Name}.");
+        //ust set by AssignUserToWorkItem it either succeeded or threw.
+        Console.WriteLine($"Work item {workItemId} assigned to {workItem.Assignee!.Name}.");
     }
 
     private static void ChangeStatus(WorkItemService workItemService)
