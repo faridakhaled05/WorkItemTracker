@@ -32,13 +32,18 @@ public class WorkItemService
 //   mutated. No extra copy is made.
 //
 // Ordering: Priority (High = 0 .. Low = 2, so ascending), then Id (Q2). This is the
-//   only place the ordering is written; all listings call it.
+//  
    
-    private IReadOnlyList<WorkItem> OrderWorkItems(IEnumerable<WorkItem> workItems)
+   //default to priority if nothing passed in, so that the default ordering is by priority.
+    private IReadOnlyList<WorkItem> OrderWorkItems(IEnumerable<WorkItem> workItems, IComparer<WorkItem>? comparer)
     {
-        return workItems.OrderBy(w => w.Priority).ThenBy(w => w.Id).ToList().AsReadOnly();
+        comparer ??= new PriorityOrdering();    
+    
+        //use the custom comparer to sort by priority in descending order (High -> Low) and then by Id in ascending order.
+        return workItems.OrderBy(w => w, comparer).ToList().AsReadOnly();
+    
+    
     }
-
     public WorkItemService(IIdGenerator idGenerator, UserService userService)
     {
         _idGenerator = idGenerator;
@@ -80,24 +85,24 @@ public class WorkItemService
     }
 
 //instant index/xount access withthout permission to modify the list, which helps maintain encapsulation and data integrity.
-    public IReadOnlyList<WorkItem> GetAllWorkItems()
+    public IReadOnlyList<WorkItem> GetAllWorkItems(IComparer<WorkItem>? comparer = null)
     {
       
-        return OrderWorkItems(_workItems);
+        return OrderWorkItems(_workItems, comparer);
     }
 
-    public IReadOnlyList<WorkItem> GetWorkItemsByStatus(Status status)
+    public IReadOnlyList<WorkItem> GetWorkItemsByStatus(Status status, IComparer<WorkItem>? comparer = null)
     {
         var filteredWorkItems = _workItems.Where(w => w.Status == status);
-        return OrderWorkItems(filteredWorkItems);
+        return OrderWorkItems(filteredWorkItems, comparer);
     }
 
-    public IReadOnlyList<WorkItem> GetWorkItemsByAssignee(int userId)
+    public IReadOnlyList<WorkItem> GetWorkItemsByAssignee(int userId, IComparer<WorkItem>? comparer = null)
     {
         var assignee = _userService.GetUserById(userId); // Ensure the user exists and throw error if not found
         //var filteredWorkItems = _workItems.Where(w => w.Assignee == assignee); //this depends on both objects being the same reference which is true here but not robus
         var filteredWorkItems = _workItems.Where(w => w.Assignee?.Id == assignee.Id);
-        return OrderWorkItems(filteredWorkItems);
+        return OrderWorkItems(filteredWorkItems, comparer );
     }
 
     public IReadOnlyDictionary<Status, int> GetStatusSummary()
