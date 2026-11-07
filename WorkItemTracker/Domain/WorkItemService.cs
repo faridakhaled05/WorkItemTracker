@@ -70,11 +70,13 @@ public class WorkItemService
         workItem.UpdateStatus(newStatus);
     }
    
-    public void AssignUserToWorkItem(int workItemId, int userId)
+   //return workitem so when printing u have access to user 
+    public WorkItem AssignUserToWorkItem(int workItemId, int userId)
     {
         var workItem = findWorkItemById(workItemId);
         var user = _userService.GetUserById(userId);
         workItem.AssignUser(user);
+        return workItem;
     }
 
 //instant index/xount access withthout permission to modify the list, which helps maintain encapsulation and data integrity.
