@@ -53,8 +53,5 @@ public class WorkItem
         Assignee = user;
     }
 
-    public void UpdatePriority(Priority newPriority)
-    {
-        Priority = newPriority;
-    }
+   
 }   

@@ -4,13 +4,12 @@ namespace  WorkItemTracker.Domain;
 public class WorkItemService
 {
     private readonly IIdGenerator _idGenerator;
-    private readonly List<WorkItem> _workItems;
+    private readonly Dictionary<int, WorkItem> _workItems;
     private readonly UserService _userService;
 
       private WorkItem findWorkItemById(int id)
     {
-        var workItem = _workItems.FirstOrDefault(w => w.Id == id);
-        if (workItem == null)
+        if (!_workItems.TryGetValue(id, out var workItem))
         {
             throw new DomainException($"Work item with ID {id} not found.");
         }
@@ -47,7 +46,7 @@ public class WorkItemService
     public WorkItemService(IIdGenerator idGenerator, UserService userService)
     {
         _idGenerator = idGenerator;
-        _workItems = new List<WorkItem>();
+        _workItems = new Dictionary<int, WorkItem>();
         _userService = userService;
     }
 
@@ -63,7 +62,7 @@ public class WorkItemService
             {
                 workItem.AssignUser(assignee);
             }
-        _workItems.Add(workItem);
+        _workItems.Add(workItem.Id, workItem);
 
         return workItem;
     }
@@ -88,12 +87,12 @@ public class WorkItemService
     public IReadOnlyList<WorkItem> GetAllWorkItems(IComparer<WorkItem>? comparer = null)
     {
       
-        return OrderWorkItems(_workItems, comparer);
+        return OrderWorkItems(_workItems.Values, comparer);
     }
 
     public IReadOnlyList<WorkItem> GetWorkItemsByStatus(Status status, IComparer<WorkItem>? comparer = null)
     {
-        var filteredWorkItems = _workItems.Where(w => w.Status == status);
+        var filteredWorkItems = _workItems.Values.Where(w => w.Status == status);
         return OrderWorkItems(filteredWorkItems, comparer);
     }
 
@@ -101,12 +100,12 @@ public class WorkItemService
     {
         var assignee = _userService.GetUserById(userId); // Ensure the user exists and throw error if not found
         //var filteredWorkItems = _workItems.Where(w => w.Assignee == assignee); //this depends on both objects being the same reference which is true here but not robus
-        var filteredWorkItems = _workItems.Where(w => w.Assignee?.Id == assignee.Id);
+        var filteredWorkItems = _workItems.Values.Where(w => w.Assignee?.Id == assignee.Id);
         return OrderWorkItems(filteredWorkItems, comparer );
     }
 
     public IReadOnlyDictionary<Status, int> GetStatusSummary()
     {
-       return Enum.GetValues<Status>().ToDictionary(status => status, status => _workItems.Count(w => w.Status == status)).AsReadOnly();
+       return Enum.GetValues<Status>().ToDictionary(status => status, status => _workItems.Values.Count(w => w.Status == status)).AsReadOnly();
     }
 }

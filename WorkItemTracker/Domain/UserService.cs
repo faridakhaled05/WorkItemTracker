@@ -4,32 +4,33 @@ public class UserService
     //the idgenerator uses the interface type polymorphism to allow for different implementations of id generation, such as sequential or random.
     //solid principle: the user service depends on the abstraction of the IIdGenerator interface, rather than a specific implementation. This allows for flexibility and easier testing, as different implementations of the IIdGenerator can be injected into the UserService.
     private readonly IIdGenerator _idGenerator;
-    //why readonly list? which helps maintain encapsulation and data integrity. 
-    private readonly List<User> _users;
+    private readonly Dictionary<int, User> _users;
+    private readonly HashSet<string> _userNames;
 
     public UserService(IIdGenerator idGenerator)
     {
         _idGenerator = idGenerator;
-        _users = new List<User>();
+        _users = new Dictionary<int, User>();
+        _userNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     public User CreateUser(string name)
     {
-        //use validateion here so that the id is not wasted if the name is invalid. 
+        
         string validatedName = User.ValidateName(name);
-        if (_users.Any(u => u.Name.Equals(validatedName, StringComparison.OrdinalIgnoreCase)))
+        if (_userNames.Contains(validatedName))
         {
             throw new DomainException($"User with name '{validatedName}' already exists.");
         }
         int newId = _idGenerator.GetNextId();
         var user = new User(newId, validatedName);
-        _users.Add(user);
+        _users.Add(user.Id, user);
+        _userNames.Add(validatedName);
         return user;
     }
     public User GetUserById(int id)
     {
-        var user = _users.FirstOrDefault(u => u.Id == id);
-        if (user == null)
+        if (!_users.TryGetValue(id, out var user))
         {
             throw new DomainException($"User with ID '{id}' not found.");
         }
@@ -38,6 +39,6 @@ public class UserService
 
     public IReadOnlyList<User> GetAllUsers()
     {
-        return _users.AsReadOnly();
+        return _users.Values.OrderBy(u => u.Id).ToList().AsReadOnly();
     }
 }
